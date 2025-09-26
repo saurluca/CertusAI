@@ -24,7 +24,9 @@ def get_service(
             if os.environ.get("FEDLEX_INDEX_LIMIT")
             else None
         )
-        model_name = os.environ.get("RAG_MODEL", "apertus-70b-com")
+        # apertus-70b-com
+        # llama3.2:3b
+        model_name = os.environ.get("RAG_MODEL", "llama3.2:3b")
         _service = LawRAGService(
             fedlex_dir=fedlex_dir,
             index_limit=index_limit,
@@ -38,16 +40,37 @@ def get_service(
             _service._num_docs = num_docs
             _service.answerer = _service.answerer.__class__(
                 num_docs=_service._num_docs,
-                search_fn=lambda q, k: _service.answerer._search_fn(q, k),
+                search_fn=lambda q, k, lang_code=None: _service._search(
+                    q, k, lang_code
+                ),
                 documents=_service.documents,
+                search_languages=getattr(_service, "_answer_languages", ["de"]),
             )
     return _service
 
 
 @app.post("/ask")
 def ask(
-    question: str, num_docs: Optional[int] = None, retrieval: Optional[str] = "bm25"
+    question: str,
+    num_docs: Optional[int] = None,
+    retrieval: Optional[str] = "bm25",
+    lang: Optional[str] = "de",  # "de", "fr", "it", or "all"
 ):
     service = get_service(num_docs=num_docs, retrieval=retrieval)
+    # Update answer languages dynamically per request
+    if retrieval == "bm25":
+        if lang == "all":
+            service._answer_languages = ["de", "fr", "it"]
+        elif lang in ("de", "fr", "it"):
+            service._answer_languages = [lang]
+        else:
+            service._answer_languages = ["de"]
+        # Rebuild only the answerer to apply language selection
+        service.answerer = service.answerer.__class__(
+            num_docs=service._num_docs,
+            search_fn=lambda q, k, lang_code=None: service._search(q, k, lang_code),
+            documents=service.documents,
+            search_languages=service._answer_languages,
+        )
     result = service.ask(question)
     return result

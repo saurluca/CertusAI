@@ -20,6 +20,25 @@ def _infer_source_kind(file_path: str) -> str:
     return "unknown"
 
 
+def _infer_lang(file_path: str) -> str:
+    """Infer document language from path parts.
+
+    - 'de' -> German
+    - 'fr' -> French
+    - 'it' -> Italian
+    Defaults to 'de' if none found.
+    """
+    norm_path = os.path.normpath(file_path)
+    parts = set(norm_path.split(os.sep))
+    if "fr" in parts:
+        return "fr"
+    if "it" in parts:
+        return "it"
+    if "de" in parts:
+        return "de"
+    return "de"
+
+
 def load_fedlex_corpus(
     directory_path: str, index_limit: Optional[int] = None
 ) -> Tuple[List[Dict], List[str], List[Dict]]:
@@ -31,13 +50,6 @@ def load_fedlex_corpus(
     - corpus_entries: metadata aligned with corpus_texts
     """
     html_files = glob.glob(os.path.join(directory_path, "**", "*.html"), recursive=True)
-
-    # Exclude French and Italian folders (e.g., .../fr/... or .../it/...)
-    def _contains_lang_dir(p: str) -> bool:
-        parts = os.path.normpath(p).split(os.sep)
-        return "fr" in parts or "it" in parts
-
-    html_files = [p for p in html_files if not _contains_lang_dir(p)]
 
     if index_limit is not None:
         html_files = html_files[:index_limit]
@@ -66,6 +78,7 @@ def load_fedlex_corpus(
                 "text": text,
                 "articles": articles,
                 "source_kind": _infer_source_kind(file_path),
+                "lang": _infer_lang(file_path),
             }
         )
 

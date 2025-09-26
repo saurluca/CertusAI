@@ -6,9 +6,14 @@ import Stemmer
 
 def build_bm25_retriever(
     corpus_texts: List[str],
+    *,
+    stemmer_lang: str = "german",
+    stopwords_lang: str = "de",
 ) -> Tuple[bm25s.BM25, Stemmer.Stemmer, List[List[str]]]:
-    stemmer = Stemmer.Stemmer("german")
-    corpus_tokens = bm25s.tokenize(corpus_texts, stopwords="de", stemmer=stemmer)
+    stemmer = Stemmer.Stemmer(stemmer_lang)
+    corpus_tokens = bm25s.tokenize(
+        corpus_texts, stopwords=stopwords_lang, stemmer=stemmer
+    )
     retriever = bm25s.BM25(k1=0.9, b=0.4)
     retriever.index(corpus_tokens)
     return retriever, stemmer, corpus_tokens
@@ -23,10 +28,13 @@ def search(
     corpus_entries: List[Dict],
     documents: List[Dict],
     document_context_length: int = 10000,
+    stopwords_lang: str = "de",
 ) -> List[Dict]:
     if not documents:
         return []
-    tokens = bm25s.tokenize(query, stopwords="de", stemmer=stemmer, show_progress=False)
+    tokens = bm25s.tokenize(
+        query, stopwords=stopwords_lang, stemmer=stemmer, show_progress=False
+    )
     results, scores = retriever.retrieve(tokens, k=k, n_threads=1, show_progress=False)
     hits: List[Dict] = []
     raw_hits: List[Dict] = []
@@ -44,6 +52,7 @@ def search(
             snippet = doc["text"][:document_context_length].replace("\n", " ").strip()
             article_ref = None
         source_kind = doc.get("source_kind", "unknown")
+        lang = doc.get("lang", "de")
         raw_hits.append(
             {
                 "doc_id": doc["id"],
@@ -53,6 +62,7 @@ def search(
                 "score": float(score),
                 "article_ref": article_ref,
                 "source_kind": source_kind,
+                "lang": lang,
             }
         )
 

@@ -1,4 +1,4 @@
-from typing import List, Dict, Callable
+from typing import List, Dict, Callable, Any, Optional
 
 import dspy
 
@@ -8,12 +8,13 @@ class AnswerWithCitations(dspy.Module):
         self,
         *,
         num_docs: int,
-        search_fn: Callable[[str, int], List[Dict]],
+        search_fn: Callable[..., List[Dict]],
         documents: List[Dict],
+        search_languages: Optional[List[str]] = None,
     ):
         """Answer questions for Swiss law with citations.
-        Write your query in German.
-        Write your answer based on the retrieved resutlts of your query.
+        Generate search queries in German, French, and Italian for BM25.
+        Write your answer based on the retrieved results of your query.
         The answer should be concise and to the point, make it a single paragraph.
         The answer should be in the same language the user asked.
 
@@ -25,6 +26,7 @@ class AnswerWithCitations(dspy.Module):
         self.num_docs = num_docs
         self._search_fn = search_fn
         self._documents = documents
+        self._search_languages = search_languages or ["de"]
 
         def _compose(hits: List[Dict]) -> str:
             lines: List[str] = []
@@ -37,7 +39,10 @@ class AnswerWithCitations(dspy.Module):
             return "\n\n".join(lines)
 
         self.compose_context = _compose
-        self.generate_query = dspy.ChainOfThought("question -> search_query")
+        # Produce multilingual search queries
+        self.generate_queries = dspy.ChainOfThought(
+            "question -> search_query_de, search_query_fr, search_query_it"
+        )
         self.answer = dspy.ChainOfThought(
             (
                 "question, contexts -> answer, citations: list[str], confidence: float, "
@@ -46,10 +51,47 @@ class AnswerWithCitations(dspy.Module):
         )
 
     def forward(self, question: str):
-        query_pred = self.generate_query(question=question)
-        search_query = getattr(query_pred, "search_query", question)
+        query_pred = self.generate_queries(question=question)
+        q_de = getattr(query_pred, "search_query_de", None) or question
+        q_fr = getattr(query_pred, "search_query_fr", None) or question
+        q_it = getattr(query_pred, "search_query_it", None) or question
 
-        hits = self._search_fn(search_query, self.num_docs)
+        # Choose which languages to query based on configuration
+        active_langs = self._search_languages or ["de"]
+        lang_to_query = {"de": q_de, "fr": q_fr, "it": q_it}
+        per_lang_hits: List[List[Dict[str, Any]]] = []
+        for lcode in ("de", "fr", "it"):
+            if lcode not in active_langs:
+                continue
+            q = lang_to_query.get(lcode, question)
+            try:
+                hits_l = self._search_fn(q, self.num_docs, lcode)
+            except TypeError:
+                hits_l = self._search_fn(q, self.num_docs)
+            per_lang_hits.append(hits_l or [])
+
+        all_hits: List[Dict[str, Any]] = [h for group in per_lang_hits for h in group]
+
+        # Deduplicate by (doc_id, article_ref) keeping highest score
+        best_by_key: Dict[tuple, Dict] = {}
+        for h in all_hits:
+            key = (h.get("doc_id"), h.get("article_ref"))
+            prev = best_by_key.get(key)
+            if not prev or float(h.get("score", 0.0)) > float(prev.get("score", 0.0)):
+                best_by_key[key] = h
+
+        deduped_hits = list(best_by_key.values())
+
+        # Re-apply official boost for ranking across languages
+        def boosted(hit: Dict) -> float:
+            base = float(hit.get("score", 0.0))
+            kind = hit.get("source_kind")
+            return base * 1.25 if kind == "official" else base
+
+        deduped_hits.sort(key=boosted, reverse=True)
+        hits = deduped_hits[: self.num_docs]
+        # Track the combined search query for transparency
+        search_query = f"de: {q_de} | fr: {q_fr} | it: {q_it}"
         contexts = self.compose_context(hits)
         pred = self.answer(question=question, contexts=contexts)
 
