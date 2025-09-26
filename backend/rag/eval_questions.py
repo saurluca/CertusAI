@@ -3,8 +3,10 @@ import sys
 import csv
 import argparse
 from typing import List, Dict, Optional
-from difflib import SequenceMatcher
-from statistics import mean
+
+import dspy
+from dspy import Example
+from dspy.evaluate import SemanticF1, Evaluate
 
 
 def _ensure_pkg_import() -> None:
@@ -15,12 +17,6 @@ def _ensure_pkg_import() -> None:
     - python rag/eval_questions.py (from backend directory)
     - python backend/rag/eval_questions.py (from repo root)
     """
-    try:
-        import rag  # noqa: F401
-
-        return
-    except Exception:
-        pass
     this_dir = os.path.dirname(os.path.abspath(__file__))
     backend_dir = os.path.dirname(this_dir)
     if backend_dir not in sys.path:
@@ -33,6 +29,7 @@ from rag import LawRAGService  # noqa: E402
 # Resolve important paths relative to this file
 BACKEND_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DEFAULT_CSV = os.path.join(BACKEND_DIR, "data", "test_questions.csv")
+SEMANTIC_F1_THRESHOLD = 0.66
 
 
 def read_test_questions(csv_path: str) -> List[Dict[str, str]]:
@@ -40,121 +37,69 @@ def read_test_questions(csv_path: str) -> List[Dict[str, str]]:
     with open(csv_path, "r", encoding="utf-8") as f:
         reader = csv.DictReader(f)
         for r in reader:
-            # Normalize expected German headers
             frage = r.get("Frage") or r.get("question") or ""
             wahre_antwort = r.get("Wahre Antwort") or r.get("answer") or ""
-            referenztext = r.get("Referenztext") or r.get("reference") or ""
-            artikel = r.get("Artikel") or r.get("article") or ""
             rows.append(
                 {
                     "Frage": frage.strip(),
                     "Wahre Antwort": wahre_antwort.strip(),
-                    "Referenztext": referenztext.strip(),
-                    "Artikel": artikel.strip(),
                 }
             )
     return rows
 
 
-def similarity(a: str, b: str) -> float:
-    return SequenceMatcher(None, (a or "").lower(), (b or "").lower()).ratio()
+def to_examples(rows: List[Dict[str, str]]) -> List[Example]:
+    examples: List[Example] = []
+    for r in rows:
+        q = r["Frage"]
+        gold = r["Wahre Antwort"]
+        # Per DSPy convention, gold field is `response`. Mark `question` as input.
+        ex = Example(question=q, response=gold).with_inputs("question")
+        examples.append(ex)
+    return examples
 
 
-def _normalize_ref(s: str) -> str:
-    s = (s or "").lower()
-    # lightweight normalization: remove duplicate spaces and common punctuation
-    for ch in [",", ".", ";", ":", "(", ")", "[", "]", "\n"]:
-        s = s.replace(ch, " ")
-    s = " ".join(s.split())
-    return s
+class ServiceWrapper(dspy.Module):
+    """Wrap LawRAGService as a DSPy Module producing `response`.
+
+    forward(question) -> Prediction(response=...)
+    """
+
+    def __init__(self, service: LawRAGService):
+        super().__init__()
+        self._service = service
+
+    def forward(self, question: str):
+        result = self._service.ask(question)
+        answer = result.get("answer", "")
+        return dspy.Prediction(response=answer)
 
 
-def article_ref_match(
-    expected: str, predicted_refs: List[str], citations: List[str], answer: str
-) -> bool:
-    if not expected:
-        return False
-    exp = _normalize_ref(expected)
-    pools: List[str] = []
-    pools.extend(predicted_refs or [])
-    pools.extend(citations or [])
-    pools.append(answer or "")
-    pools_norm = [_normalize_ref(x) for x in pools]
-    return any(exp in p or p in exp for p in pools_norm)
-
-
-def evaluate(
-    questions: List[Dict[str, str]],
+def run_semantic_f1_eval(
     *,
-    num_docs: Optional[int],
-    limit: Optional[int],
-    output_csv: Optional[str],
-) -> None:
-    service = LawRAGService(num_docs=num_docs) if num_docs else LawRAGService()
+    csv_path: str,
+    f1_threshold: float,
+    decompositional: bool,
+    retrieval: str,
+) -> float:
+    service = LawRAGService(retrieval=retrieval)
 
-    if limit is not None:
-        questions = questions[:limit]
+    dev_rows = read_test_questions(csv_path)
+    devset = to_examples(dev_rows)
 
-    results: List[Dict[str, object]] = []
+    # Metric per DSPy tutorial
+    metric = SemanticF1(threshold=f1_threshold, decompositional=decompositional)
 
-    for idx, row in enumerate(questions, start=1):
-        q = row["Frage"]
-        expected_answer = row["Wahre Antwort"]
-        expected_article = row["Artikel"]
-
-        pred = service.ask(q)
-        ans = pred.get("answer", "")
-        citations = pred.get("citations", []) or []
-        article_refs = pred.get("article_refs", []) or []
-        confidence = float(pred.get("confidence", 0.0))
-
-        sim = similarity(expected_answer, ans)
-        has_article = article_ref_match(expected_article, article_refs, citations, ans)
-
-        results.append(
-            {
-                "index": idx,
-                "question": q,
-                "expected_answer": expected_answer,
-                "expected_article": expected_article,
-                "answer": ans,
-                "citations": "; ".join(citations),
-                "article_refs": "; ".join(article_refs),
-                "confidence": confidence,
-                "similarity": sim,
-                "article_match": has_article,
-            }
-        )
-
-        print(
-            f"[{idx}] sim={sim:.2f} conf={confidence:.2f} article_match={has_article} | {q}"
-        )
-
-    # Aggregate
-    avg_sim = mean([r["similarity"] for r in results]) if results else 0.0
-    avg_conf = mean([r["confidence"] for r in results]) if results else 0.0
-    art_rate = (
-        sum(1 for r in results if r["article_match"]) / len(results) if results else 0.0
+    program = ServiceWrapper(service)
+    evaluator = Evaluate(
+        devset=devset, metric=metric, num_threads=1, display_progress=True
     )
-
-    print("\nSummary:")
-    print(f"- Avg similarity: {avg_sim:.3f}")
-    print(f"- Avg confidence: {avg_conf:.3f}")
-    print(f"- Article reference match rate: {art_rate:.3f}")
-
-    if output_csv:
-        fieldnames = list(results[0].keys()) if results else []
-        with open(output_csv, "w", encoding="utf-8", newline="") as f:
-            writer = csv.DictWriter(f, fieldnames=fieldnames)
-            writer.writeheader()
-            for r in results:
-                writer.writerow(r)
-        print(f"\nSaved detailed results to: {output_csv}")
+    evaluator(program)
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="Evaluate LawRAGService against a CSV of test questions."
+        description="Evaluate LawRAGService using DSPy SemanticF1 (RAG tutorial style)."
     )
     parser.add_argument(
         "--csv",
@@ -162,27 +107,20 @@ def main() -> None:
         help="Path to test_questions.csv",
     )
     parser.add_argument(
-        "--num-docs",
-        type=int,
-        default=None,
-        help="Override number of retrieved documents per query.",
+        "--decomp",
+        action="store_true",
+        help="Use decompositional SemanticF1 from DSPy.",
     )
     parser.add_argument(
-        "--limit",
-        type=int,
-        default=None,
-        help="Limit number of questions to run.",
-    )
-    parser.add_argument(
-        "--output",
-        default=None,
-        help="Optional path to write a CSV with detailed results.",
+        "--retrieval",
+        choices=["bm25", "semantic"],
+        default=os.environ.get("RETRIEVAL", "bm25"),
+        help="Choose retrieval backend: bm25 (default) or semantic.",
     )
     args = parser.parse_args()
 
     csv_path = args.csv
     if not os.path.exists(csv_path):
-        # Try relative to backend directory (works when run from backend/rag)
         candidate1 = os.path.join(BACKEND_DIR, csv_path)
         candidate2 = os.path.join(BACKEND_DIR, "data", os.path.basename(csv_path))
         if os.path.exists(candidate1):
@@ -194,12 +132,11 @@ def main() -> None:
                 f"CSV file not found: {args.csv}. Tried: {candidate1}, {candidate2}"
             )
 
-    questions = read_test_questions(csv_path)
-    evaluate(
-        questions,
-        num_docs=args.num_docs,
-        limit=args.limit,
-        output_csv=args.output,
+    run_semantic_f1_eval(
+        csv_path=csv_path,
+        f1_threshold=SEMANTIC_F1_THRESHOLD,
+        decompositional=bool(args.decomp),
+        retrieval=args.retrieval,
     )
 
 

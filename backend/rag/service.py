@@ -5,6 +5,7 @@ import dspy
 
 from .corpus import load_fedlex_corpus
 from .retrieval import build_bm25_retriever, search as bm25_search
+from .semantic_retrieval import build_embeddings_retriever, search as semantic_search
 from .answerer import AnswerWithCitations
 from model_builder import build_lm
 
@@ -20,6 +21,9 @@ class LawRAGService:
         model_name: str = "gpt-4o-mini",
         num_docs: int = 5,
         document_context_length: int = 10000,
+        retrieval: str = "bm25",
+        embedding_model: str = "ollama/nomic-embed-text:latest",
+        embedding_dimensions: int = 512,
     ) -> None:
         self._fedlex_dir = fedlex_dir or os.environ.get(
             "FEDLEX_DIR", os.path.join(os.getcwd(), "data/fedlex-assets")
@@ -29,6 +33,11 @@ class LawRAGService:
         )
         self._num_docs = num_docs
         self._document_context_length = document_context_length
+        self._retrieval = (retrieval or os.environ.get("RETRIEVAL", "bm25")).lower()
+        self._embedding_model = os.environ.get("EMBEDDING_MODEL", embedding_model)
+        self._embedding_dimensions = int(
+            os.environ.get("EMBEDDING_DIMENSIONS", str(embedding_dimensions))
+        )
 
         lm = build_lm(model_name)
         dspy.configure(lm=lm)
@@ -42,20 +51,39 @@ class LawRAGService:
                 "No HTML documents found. Place files under 'fedlex-assets/' or set FEDLEX_DIR."
             )
 
-        # Build retriever
-        self.retriever, self.stemmer, _ = build_bm25_retriever(self.corpus)
-
-        # Search function closure
-        def _search(q: str, k: int) -> List[Dict]:
-            return bm25_search(
-                q,
-                k,
-                retriever=self.retriever,
-                stemmer=self.stemmer,
-                corpus_entries=self.corpus_entries,
-                documents=self.documents,
-                document_context_length=self._document_context_length,
+        # Build retriever(s)
+        if self._retrieval == "semantic":
+            self.emb_retriever, _ = build_embeddings_retriever(
+                self.corpus,
+                embedding_model=self._embedding_model,
+                dimensions=self._embedding_dimensions,
+                default_k=self._num_docs,
             )
+
+            def _search(q: str, k: int) -> List[Dict]:
+                return semantic_search(
+                    q,
+                    k,
+                    retriever=self.emb_retriever,
+                    corpus_entries=self.corpus_entries,
+                    documents=self.documents,
+                    corpus_texts=self.corpus,
+                    document_context_length=self._document_context_length,
+                )
+
+        else:
+            self.retriever, self.stemmer, _ = build_bm25_retriever(self.corpus)
+
+            def _search(q: str, k: int) -> List[Dict]:
+                return bm25_search(
+                    q,
+                    k,
+                    retriever=self.retriever,
+                    stemmer=self.stemmer,
+                    corpus_entries=self.corpus_entries,
+                    documents=self.documents,
+                    document_context_length=self._document_context_length,
+                )
 
         # Answerer
         self.answerer = AnswerWithCitations(

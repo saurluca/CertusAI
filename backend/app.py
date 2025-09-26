@@ -11,10 +11,13 @@ app = FastAPI(title="Swiss Law RAG API", version="0.1.0")
 _service: Optional[LawRAGService] = None
 
 
-def get_service(num_docs: Optional[int] = None) -> LawRAGService:
+def get_service(
+    num_docs: Optional[int] = None, retrieval: Optional[str] = None
+) -> LawRAGService:
     global _service
-    # Allow changing num_docs per request while reusing heavy corpus + retriever
-    if _service is None:
+    # Allow changing retrieval and num_docs per request while reusing heavy corpus
+    desired_retrieval = (retrieval or os.environ.get("RETRIEVAL", "bm25")).lower()
+    if _service is None or getattr(_service, "_retrieval", "bm25") != desired_retrieval:
         fedlex_dir = os.environ.get("FEDLEX_DIR")
         index_limit = (
             int(os.environ["FEDLEX_INDEX_LIMIT"])
@@ -27,6 +30,7 @@ def get_service(num_docs: Optional[int] = None) -> LawRAGService:
             index_limit=index_limit,
             model_name=model_name,
             num_docs=num_docs or int(os.environ.get("RAG_NUM_DOCS", "5")),
+            retrieval=desired_retrieval,
         )
     else:
         if num_docs is not None and num_docs != _service._num_docs:
@@ -41,7 +45,9 @@ def get_service(num_docs: Optional[int] = None) -> LawRAGService:
 
 
 @app.post("/ask")
-def ask(question: str, num_docs: Optional[int] = None):
-    service = get_service(num_docs=num_docs)
+def ask(
+    question: str, num_docs: Optional[int] = None, retrieval: Optional[str] = "bm25"
+):
+    service = get_service(num_docs=num_docs, retrieval=retrieval)
     result = service.ask(question)
     return result
