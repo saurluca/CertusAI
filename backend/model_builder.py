@@ -28,6 +28,11 @@ model_configs = {
         "api_key": os.getenv("SWISS_API_KEY"),
         "api_base": "https://api.publicai.co/v1",
     },
+    "apertus-70b-com": {
+        "model": "openrouter/swiss-ai/Apertus-70B",
+        "api_key": os.getenv("SWISS_COM_API_KEY"),
+        "api_base": "https://api.swisscom.com/layer/swiss-ai-weeks/apertus-70b/v1",
+    },
     "llama3.2:3b": {
         "model": "ollama_chat/llama3.2:3b",
         "api_key": "",

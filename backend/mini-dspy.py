@@ -5,7 +5,9 @@ from model_builder import build_lm
 
 load_dotenv()
 
-lm = build_lm("gpt-4o-mini")
+print("running mini-dspy")
+
+lm = build_lm("apertus-70b-com")
 
 dspy.configure(lm=lm)
 
@@ -18,5 +20,5 @@ class Base(dspy.Signature):
 model = dspy.Predict(Base)
 
 # %%
-output = model(question="what is the captial of argentina?")
+output = model(question="what is the capital of argentina?")
 print(output.answer)

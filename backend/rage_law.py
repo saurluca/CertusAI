@@ -1,3 +1,4 @@
+# %%
 """
 RAG for Swiss law using DSPy.
 Simple prototype that indexes local HTML files (fedlex-assets) and answers questions
@@ -8,7 +9,6 @@ References:
 - DSPy Multi-hop search tutorial: https://dspy.ai/tutorials/multihop_search/
 """
 
-# %%
 import os
 import re
 import glob
@@ -19,7 +19,7 @@ from html.parser import HTMLParser
 from model_builder import build_lm
 
 
-lm = build_lm("gpt-4o-mini")
+lm = build_lm("apertus-70b-com")
 dspy.configure(lm=lm)
 
 NUM_DOCS_TO_LOAD = 500
@@ -161,6 +161,7 @@ if len(documents) == 0:
     raise SystemExit(0)
 
 print("Setting up BM25 retriever...")
+
 stemmer = Stemmer.Stemmer("german")
 corpus_tokens = bm25s.tokenize(corpus, stopwords="de", stemmer=stemmer)
 retriever = bm25s.BM25(k1=0.9, b=0.4)
