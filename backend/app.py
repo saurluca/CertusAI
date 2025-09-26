@@ -24,7 +24,7 @@ def get_service(
             if os.environ.get("FEDLEX_INDEX_LIMIT")
             else None
         )
-        model_name = os.environ.get("RAG_MODEL", "gpt-4o-mini")
+        model_name = os.environ.get("RAG_MODEL", "apertus-70b-com")
         _service = LawRAGService(
             fedlex_dir=fedlex_dir,
             index_limit=index_limit,
