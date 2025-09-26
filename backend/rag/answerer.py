@@ -11,8 +11,11 @@ class AnswerWithCitations(dspy.Module):
         search_fn: Callable[[str, int], List[Dict]],
         documents: List[Dict],
     ):
-        """Answer questions for Swiss law with citations. Based on the retrieved resutlts of your query.
+        """Answer questions for Swiss law with citations.
+        Write your query in German.
+        Write your answer based on the retrieved resutlts of your query.
         The answer should be concise and to the point, make it a single paragraph.
+        The answer should be in the same language the user asked.
 
         Parameters
         - num_docs: number of docs to retrieve per query
