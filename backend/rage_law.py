@@ -167,6 +167,9 @@ retriever = bm25s.BM25(k1=0.9, b=0.4)
 retriever.index(corpus_tokens)
 
 
+DOCUMENT_CONTEXT_LENGTH = 10000
+
+
 def search(query: str, k: int) -> list[dict]:
     """Retrieve top-k documents for `query` and return rich hits."""
     if not documents:
@@ -176,7 +179,7 @@ def search(query: str, k: int) -> list[dict]:
     hits: list[dict] = []
     for doc_index, score in zip(results[0], scores[0]):
         doc = documents[doc_index]
-        snippet = doc["text"][:500].replace("\n", " ").strip()
+        snippet = doc["text"][:DOCUMENT_CONTEXT_LENGTH].replace("\n", " ").strip()
         hits.append(
             {
                 "doc_id": doc["id"],
@@ -261,16 +264,13 @@ if __name__ == "__main__":
     #     print(f"- {d['title']}  ({d['id']})")
 
     # Construct three simple test prompts that anchor on the titles
-    test_questions: list[str] = []
-    test_questions.append(
-        f"What is the main subject of '{sample_docs[0]['title']}'? Provide a short answer and cite the source."
-    )
-    test_questions.append(
-        "What are the two main bodies that form the overdepartmental crisis organization of the Federal Administration"
-    )
-    test_questions.append(
-        "Which two federal offices cooperate to run the Base Organization for Crisis Management (BOK)?"
-    )
+    test_questions: list[str] = [
+        # "What are the two main bodies that form the overdepartmental crisis organization of the Federal Administration"
+        # "Which two federal offices cooperate to run the Base Organization for Crisis Management (BOK)?"
+        "Welche Rechte hat eine Person gemäss Bundesverfassung bei der Meinungsfreiheit",
+        "Unter welchen Umständen darf ein Arbeitsvertrag in der Probezeit gekündigt werden?",
+        "Welche Datenschutzpflichten bestehen für Bundesbehörden?",
+    ]
 
     rag = AnswerWithCitations(num_docs=5)
 
