@@ -29,6 +29,7 @@ def search(
     tokens = bm25s.tokenize(query, stopwords="de", stemmer=stemmer, show_progress=False)
     results, scores = retriever.retrieve(tokens, k=k, n_threads=1, show_progress=False)
     hits: List[Dict] = []
+    raw_hits: List[Dict] = []
     for corpus_idx, score in zip(results[0], scores[0]):
         entry = corpus_entries[corpus_idx]
         doc = documents[entry["doc_idx"]]
@@ -42,7 +43,8 @@ def search(
         else:
             snippet = doc["text"][:document_context_length].replace("\n", " ").strip()
             article_ref = None
-        hits.append(
+        source_kind = doc.get("source_kind", "unknown")
+        raw_hits.append(
             {
                 "doc_id": doc["id"],
                 "title": doc["title"],
@@ -50,6 +52,17 @@ def search(
                 "snippet": snippet,
                 "score": float(score),
                 "article_ref": article_ref,
+                "source_kind": source_kind,
             }
         )
-    return hits
+
+    # Prefer official law texts (cc/oc) over reference texts (fga)
+    def boosted(h: Dict) -> float:
+        base = h["score"]
+        kind = h.get("source_kind")
+        if kind == "official":
+            return base * 1.25
+        return base
+
+    raw_hits.sort(key=boosted, reverse=True)
+    return raw_hits[:k]

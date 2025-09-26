@@ -5,6 +5,21 @@ from typing import List, Dict, Tuple, Optional
 from .html_utils import extract_title_and_text, extract_articles_from_text
 
 
+def _infer_source_kind(file_path: str) -> str:
+    """Infer whether a Fedlex HTML file is an official law text or reference.
+
+    - cc, oc -> official
+    - fga -> reference
+    """
+    norm_path = os.path.normpath(file_path)
+    parts = set(norm_path.split(os.sep))
+    if "cc" in parts or "oc" in parts:
+        return "official"
+    if "fga" in parts:
+        return "reference"
+    return "unknown"
+
+
 def load_fedlex_corpus(
     directory_path: str, index_limit: Optional[int] = None
 ) -> Tuple[List[Dict], List[str], List[Dict]]:
@@ -50,6 +65,7 @@ def load_fedlex_corpus(
                 "abbr": abbr,
                 "text": text,
                 "articles": articles,
+                "source_kind": _infer_source_kind(file_path),
             }
         )
 
