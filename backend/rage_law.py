@@ -198,25 +198,45 @@ class AnswerWithCitations(dspy.Module):
         self.compose_context = lambda hits: "\n\n".join(
             [f"[{i + 1}] {h['title']}\n{h['snippet']}" for i, h in enumerate(hits)]
         )
+        # Add query generation step
+        self.generate_query = dspy.ChainOfThought("question -> search_query")
         self.answer = dspy.ChainOfThought(
-            "question, contexts -> answer, citations: list[str]"
+            "question, contexts -> answer, citations: list[str], confidence: float"
         )
 
     def forward(self, question: str):
-        hits = search(question, k=self.num_docs)
+        # Generate optimized search query from user question
+        query_pred = self.generate_query(question=question)
+        search_query = getattr(query_pred, "search_query", question)
+
+        # Use generated query for document search
+        hits = search(search_query, k=self.num_docs)
         contexts = self.compose_context(hits)
         pred = self.answer(question=question, contexts=contexts)
 
         predicted_answer = getattr(pred, "answer", "")
         predicted_citations = getattr(pred, "citations", None)
+        predicted_confidence = getattr(
+            pred, "confidence", 0.5
+        )  # Default to 0.5 if not provided
+
         if not predicted_citations:
             predicted_citations = [h["title"] for h in hits[:3]]
+
+        # Ensure confidence is a float between 0 and 1
+        try:
+            confidence = float(predicted_confidence)
+            confidence = max(0.0, min(1.0, confidence))  # Clamp between 0 and 1
+        except (ValueError, TypeError):
+            confidence = 0.5  # Default if parsing fails
 
         retrieved_titles = [h["title"] for h in hits]
         return dspy.Prediction(
             answer=predicted_answer,
             citations=predicted_citations,
             retrieved=retrieved_titles,
+            search_query=search_query,  # Include generated query in output
+            confidence=confidence,
         )
 
 
@@ -236,24 +256,21 @@ if __name__ == "__main__":
         raise SystemExit(0)
 
     sample_docs = documents[:3]
-    print("Sample documents:")
-    for d in sample_docs:
-        print(f"- {d['title']}  ({d['id']})")
+    # print("Sample documents:")
+    # for d in sample_docs:
+    #     print(f"- {d['title']}  ({d['id']})")
 
     # Construct three simple test prompts that anchor on the titles
     test_questions: list[str] = []
-    if len(sample_docs) >= 1:
-        test_questions.append(
-            f"What is the main subject of '{sample_docs[0]['title']}'? Provide a short answer and cite the source."
-        )
-    if len(sample_docs) >= 2:
-        test_questions.append(
-            "What are the two main bodies that form the overdepartmental crisis organization of the Federal Administration"
-        )
-    if len(sample_docs) >= 3:
-        test_questions.append(
-            "Which two federal offices cooperate to run the Base Organization for Crisis Management (BOK)?"
-        )
+    test_questions.append(
+        f"What is the main subject of '{sample_docs[0]['title']}'? Provide a short answer and cite the source."
+    )
+    test_questions.append(
+        "What are the two main bodies that form the overdepartmental crisis organization of the Federal Administration"
+    )
+    test_questions.append(
+        "Which two federal offices cooperate to run the Base Organization for Crisis Management (BOK)?"
+    )
 
     rag = AnswerWithCitations(num_docs=5)
 
@@ -262,7 +279,9 @@ if __name__ == "__main__":
         print("-" * 50)
         print(f"Q{i}: {q}")
         pred = rag(question=q)
+        print(f"Generated Query: {pred.search_query}")
         print(f"Answer: {pred.answer}")
+        print(f"Confidence: {pred.confidence:.2f}")
         print(f"Citations: {pred.citations}")
         print(f"Retrieved: {pred.retrieved[:5]}")
     print("-" * 50)
