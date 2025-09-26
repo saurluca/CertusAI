@@ -5,3 +5,8 @@ wiki.*
 
 
 __pycache__/
+
+
+*data/
+
+backend/data/

@@ -129,7 +129,7 @@ def top5_recall(example, pred, trace=None):
 evaluate = dspy.Evaluate(
     devset=devset,
     metric=top5_recall,
-    num_threads=16,
+    num_threads=4,
     display_progress=True,
     display_table=5,
 )
