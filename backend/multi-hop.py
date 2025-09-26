@@ -7,14 +7,11 @@ import ujson
 import bm25s
 import Stemmer
 import random
+import urllib.request
+from model_builder import build_lm
 
-# from dspy.datasets import DataLoader
-from datasets import load_dataset
+lm = build_lm("gpt-4o-mini")
 
-# Configure the language model
-lm = dspy.LM(
-    "ollama_chat/llama3.2:3b", api_base="http://100.116.24.45:11434", max_tokens=3000
-)
 dspy.configure(lm=lm)
 
 # Load the Wikipedia corpus
@@ -39,10 +36,18 @@ retriever = bm25s.BM25(k1=0.9, b=0.4)
 retriever.index(corpus_tokens)
 
 # %%
+# 1. Download the HoVer dataset directly (minimal HTTP loader)
+HOVER_TRAIN_URL = "https://raw.githubusercontent.com/hover-nlp/hover/main/data/hover/hover_train_release_v1.1.json"
 
-# 1. Load the dataset directly from Hugging Face
-# Specify the columns (fields) you need for filtering and processing
-dataset = load_dataset("hover-nlp/hover", split="train", trust_remote_code=True)
+
+def _download_hover_json(url: str):
+    with urllib.request.urlopen(url) as resp:
+        return ujson.loads(resp.read().decode("utf-8"))
+
+
+# Specify the split you want to use for training data construction
+print("Downloading HoVer train split...")
+dataset = _download_hover_json(HOVER_TRAIN_URL)
 
 # 2. Filter, Process, and Convert to dspy.Example objects
 hpqa_ids = set()
@@ -58,7 +63,13 @@ for x in dataset:
             hpqa_ids.add(x["hpqa_id"])
 
             # Extract unique titles from supporting_facts
-            titles = list(set([y["key"] for y in x["supporting_facts"]]))
+            titles_set = set()
+            for y in x["supporting_facts"]:
+                if isinstance(y, dict) and "key" in y:
+                    titles_set.add(y["key"])
+                elif isinstance(y, (list, tuple)) and len(y) > 0:
+                    titles_set.add(y[0])
+            titles = list(titles_set)
 
             # Create the dspy.Example object
             example = dspy.Example(claim=x["claim"], titles=titles).with_inputs("claim")
@@ -66,32 +77,10 @@ for x in dataset:
 
 # 3. Shuffle and Split the Dataset
 random.Random(0).shuffle(hover_data)
-trainset = hover_data[:200]
-devset = hover_data[200:500]
-testset = hover_data[650:]  # Note: You keep the original slice index
+trainset = hover_data[:5]  # 200
+devset = hover_data[5:10]  # 200:500
+testset = hover_data[10:15]  # 650
 
-# # Load the HoVer dataset
-# print("Loading dataset...")
-# kwargs = dict(
-#     fields=("claim", "supporting_facts", "hpqa_id", "num_hops"), input_keys=("claim",)
-# )
-# hover = DataLoader().from_huggingface(
-#     dataset_name="hover-nlp/hover", split="train", trust_remote_code=True, **kwargs
-# )
-
-# hpqa_ids = set()
-# hover = [
-#     dspy.Example(
-#         claim=x.claim, titles=list(set([y["key"] for y in x.supporting_facts]))
-#     ).with_inputs("claim")
-#     for x in hover
-#     if x["num_hops"] == 3
-#     and x["hpqa_id"] not in hpqa_ids
-#     and not hpqa_ids.add(x["hpqa_id"])
-# ]
-
-# random.Random(0).shuffle(hover)
-# trainset, devset, testset = hover[:200], hover[200:500], hover[650:]
 
 print(
     f"Dataset split - Train: {len(trainset)}, Dev: {len(devset)}, Test: {len(testset)}"
