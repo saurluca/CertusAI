@@ -13,7 +13,8 @@ class AnswerWithCitations(dspy.Module):
         search_languages: Optional[List[str]] = None,
     ):
         """Answer questions for Swiss law with citations.
-        Generate search queries in German, French, and Italian for BM25.
+        Generate search queries in German, French, and Italian for BM25,
+        the query should be atleast 10 words.
         Write your answer based on the retrieved results of your query.
         The answer should be concise and to the point, make it a single paragraph.
         The answer should be in the same language the user asked.
