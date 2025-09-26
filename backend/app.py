@@ -31,7 +31,7 @@ def get_service(
             fedlex_dir=fedlex_dir,
             index_limit=index_limit,
             model_name=model_name,
-            num_docs=num_docs or int(os.environ.get("RAG_NUM_DOCS", "5")),
+            num_docs=num_docs or int(os.environ.get("RAG_NUM_DOCS", "10")),
             retrieval=desired_retrieval,
         )
     else:

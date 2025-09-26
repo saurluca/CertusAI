@@ -83,19 +83,25 @@ class HTMLToTextParser(HTMLParser):
 
 def extract_title_and_text(
     html_content: str, fallback_title: str
-) -> Tuple[str, str, Optional[str]]:
+) -> Tuple[str, str, Optional[str], Optional[str]]:
     parser = HTMLToTextParser()
     parser.feed(html_content)
     # Prefer the law-specific title if present, then <title>, then fallback
     title = parser.get_law_title() or parser.get_title() or fallback_title
     text = parser.get_text()
-    # Try to extract abbreviation from short title e.g. "(BV)"
+    # Extract short title (often contains abbreviation in parentheses)
+    short_title = parser.get_short_title() or None
+
+    # Try to extract abbreviation from short title or title e.g. "(BV)", "(OR)", "(DSG)"
     abbr: Optional[str] = None
-    short_title = parser.get_short_title()
-    m = re.search(r"\(([A-ZÄÖÜ]{2,10})\)", short_title)
-    if m:
-        abbr = m.group(1)
-    return title, text, abbr
+    sources = [short_title or "", title or "", parser.get_title() or ""]
+    for src in sources:
+        m = re.search(r"\(([A-ZÄÖÜ]{2,10})\)", src)
+        if m:
+            abbr = m.group(1)
+            break
+
+    return title, text, abbr, short_title
 
 
 def extract_articles_from_text(text: str, default_abbr: Optional[str]) -> List[Dict]:

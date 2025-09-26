@@ -19,7 +19,7 @@ class LawRAGService:
         fedlex_dir: Optional[str] = None,
         index_limit: Optional[int] = None,
         model_name: str = "apertus-70b-com",
-        num_docs: int = 5,
+        num_docs: int = 10,
         document_context_length: int = 10000,
         retrieval: str = "bm25",
         embedding_model: str = "ollama/nomic-embed-text:latest",

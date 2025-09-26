@@ -63,18 +63,41 @@ def load_fedlex_corpus(
             continue
 
         fallback_title = os.path.splitext(os.path.basename(file_path))[0]
-        title, text, abbr = extract_title_and_text(
+        title, text, abbr, short_title = extract_title_and_text(
             html_str, fallback_title=fallback_title
         )
         if not text:
             continue
         # Extract article spans to support precise citations
-        articles = extract_articles_from_text(text, default_abbr=abbr)
+        raw_articles = extract_articles_from_text(text, default_abbr=abbr)
+        # Determine a stable law marker: prefer abbreviation, else short title, else full title
+        law_marker = abbr or (short_title.strip() if short_title else None) or title
+        # Normalize each article reference to include a law marker when missing
+        articles = []
+        for art in raw_articles:
+            ref = art.get("ref", "").strip()
+            if ref:
+                has_marker = False
+                if abbr and abbr in ref:
+                    has_marker = True
+                if not has_marker and law_marker and law_marker in ref:
+                    has_marker = True
+                if not has_marker and law_marker:
+                    ref = f"{ref} {law_marker}".strip()
+            articles.append(
+                {
+                    "ref": ref,
+                    "text": art.get("text", ""),
+                    "law_marker": law_marker,
+                }
+            )
         documents.append(
             {
                 "id": file_path,
                 "title": title,
                 "abbr": abbr,
+                "short_title": short_title,
+                "law_marker": law_marker,
                 "text": text,
                 "articles": articles,
                 "source_kind": _infer_source_kind(file_path),
@@ -89,13 +112,18 @@ def load_fedlex_corpus(
         corpus_texts.append(f"{doc['title']} | {doc['text']}")
         corpus_entries.append({"doc_idx": doc_idx, "kind": "doc"})
         for art in doc.get("articles", []):
-            corpus_texts.append(f"{doc['title']} | {art['ref']} | {art['text']}")
+            # Ensure the law marker is present in the indexed text to aid semantic mapping
+            law_marker = art.get("law_marker") or doc.get("law_marker") or doc["title"]
+            corpus_texts.append(
+                f"{doc['title']} | {art['ref']} | {law_marker} | {art['text']}"
+            )
             corpus_entries.append(
                 {
                     "doc_idx": doc_idx,
                     "kind": "article",
                     "article_ref": art["ref"],
                     "article_text": art["text"],
+                    "law_marker": law_marker,
                 }
             )
     return documents, corpus_texts, corpus_entries

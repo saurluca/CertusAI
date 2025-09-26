@@ -1,4 +1,3 @@
-import os
 from typing import List, Dict, Tuple, Any
 
 import dotenv
@@ -117,9 +116,11 @@ def search(
                 .strip()
             )
             article_ref = entry.get("article_ref")
+            law_marker = entry.get("law_marker")
         else:
             snippet = doc["text"][:document_context_length].replace("\n", " ").strip()
             article_ref = None
+            law_marker = doc.get("law_marker")
         source_kind = doc.get("source_kind", "unknown")
 
         hits.append(
@@ -127,6 +128,10 @@ def search(
                 "doc_id": doc["id"],
                 "title": doc["title"],
                 "abbr": doc.get("abbr"),
+                "law_marker": law_marker
+                or doc.get("abbr")
+                or doc.get("short_title")
+                or doc.get("title"),
                 "snippet": snippet,
                 "score": float(score),
                 "article_ref": article_ref,
