@@ -32,9 +32,10 @@ class AnswerWithCitations(dspy.Module):
             lines: List[str] = []
             for i, h in enumerate(hits):
                 label = h.get("article_ref") or h.get("title")
-                abbr = h.get("abbr")
-                if abbr and h.get("article_ref") and abbr not in label:
-                    label = f"{label} {abbr}"
+                # Choose the best available law marker: abbr > law_marker (short title) > title
+                law_marker = h.get("abbr") or h.get("law_marker") or h.get("title")
+                if label and law_marker and law_marker not in label:
+                    label = f"{label} {law_marker}"
                 lines.append(f"[{i + 1}] {label}\n{h['snippet']}")
             return "\n\n".join(lines)
 
@@ -144,10 +145,11 @@ class AnswerWithCitations(dspy.Module):
         # Build legal-style references from hits, preferring official sources
         def _make_ref(h: Dict) -> str:
             ref = h.get("article_ref")
-            abbr = h.get("abbr")
+            # Prefer abbreviation, then explicit law_marker, then fall back to title
+            law_marker = h.get("abbr") or h.get("law_marker") or h.get("title")
             if ref:
-                if abbr and abbr not in ref:
-                    return f"{ref} {abbr}"
+                if law_marker and law_marker not in ref:
+                    return f"{ref} {law_marker}"
                 return ref
             # fallback: no article_ref; try to synthesize from first article of the doc
             doc = next(
@@ -156,9 +158,9 @@ class AnswerWithCitations(dspy.Module):
             if doc and doc.get("articles"):
                 first = doc["articles"][0]
                 base = first.get("ref") or doc.get("title")
-                abbr2 = doc.get("abbr")
-                if base and abbr2 and abbr2 not in base:
-                    return f"{base} {abbr2}"
+                marker = doc.get("abbr") or doc.get("law_marker") or doc.get("title")
+                if base and marker and marker not in base:
+                    return f"{base} {marker}"
                 return base or doc.get("title", "")
             return h.get("title", "")
 
