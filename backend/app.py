@@ -26,7 +26,7 @@ def get_service(
         )
         # apertus-70b-com
         # llama3.2:3b
-        model_name = os.environ.get("RAG_MODEL", "llama3.2:3b")
+        model_name = os.environ.get("RAG_MODEL", "gpt-4o-mini")
         _service = LawRAGService(
             fedlex_dir=fedlex_dir,
             index_limit=index_limit,

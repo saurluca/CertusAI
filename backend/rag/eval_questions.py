@@ -30,8 +30,8 @@ from rag import LawRAGService  # noqa: E402
 BACKEND_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DEFAULT_CSV = os.path.join(BACKEND_DIR, "data", "test_questions.csv")
 SEMANTIC_F1_THRESHOLD = 0.66
-# MODEL_NAME = "llama3.2:3b"
-MODEL_NAME = "gpt-4o-mini"
+MODEL_NAME = "apertus-70b-com"
+# MODEL_NAME = "gpt-4o-mini"
 
 
 def read_test_questions(csv_path: str) -> List[Dict[str, str]]:

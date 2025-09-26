@@ -49,6 +49,9 @@ class AnswerWithCitations(dspy.Module):
                 "article_refs: list[str], article_quotes: list[str]"
             )
         )
+        self.validate = dspy.ChainOfThought(
+            ("question, answer, contexts, citations -> ok: bool, feedback")
+        )
 
     def forward(self, question: str):
         query_pred = self.generate_queries(question=question)
@@ -100,6 +103,43 @@ class AnswerWithCitations(dspy.Module):
         predicted_article_refs = getattr(pred, "article_refs", None)
         predicted_article_quotes = getattr(pred, "article_quotes", None)
         predicted_confidence = getattr(pred, "confidence", 0.5)
+        # Validation step: ensure language matches and answer is grounded in contexts
+        citations_text = ", ".join(predicted_citations or [])
+        val_pred = self.validate(
+            question=question,
+            answer=predicted_answer,
+            contexts=contexts,
+            citations=citations_text,
+        )
+        ok_val = getattr(val_pred, "ok", None)
+        ok_normalized = False
+        if isinstance(ok_val, bool):
+            ok_normalized = ok_val
+        elif isinstance(ok_val, (int, float)):
+            ok_normalized = bool(ok_val)
+        elif isinstance(ok_val, str):
+            ok_normalized = ok_val.strip().lower() in {"true", "yes", "y", "1", "ok"}
+        feedback = getattr(val_pred, "feedback", "") or ""
+
+        if not ok_normalized:
+            # Single regeneration using reviewer feedback appended to contexts
+            contexts_with_feedback = (
+                contexts
+                + "\n\n[Reviewer feedback]\n"
+                + feedback
+                + "\n\nRevise the answer strictly in the same language as the user's question."
+                + " Use only the information present in the contexts above; do not introduce external facts."
+            )
+            pred2 = self.answer(question=question, contexts=contexts_with_feedback)
+            predicted_answer = getattr(pred2, "answer", predicted_answer)
+            predicted_citations = getattr(pred2, "citations", predicted_citations)
+            predicted_article_refs = getattr(
+                pred2, "article_refs", predicted_article_refs
+            )
+            predicted_article_quotes = getattr(
+                pred2, "article_quotes", predicted_article_quotes
+            )
+            predicted_confidence = getattr(pred2, "confidence", predicted_confidence)
 
         # Build legal-style references from hits, preferring official sources
         def _make_ref(h: Dict) -> str:
@@ -187,11 +227,46 @@ class AnswerWithCitations(dspy.Module):
         legal_refs_inline = official_refs or all_refs
         if legal_refs_inline:
             # Append a compact reference sentence; keep single-paragraph style
+            def _guess_lang(s: str) -> str:
+                text = (s or "").lower()
+                # very lightweight heuristics
+                if any(
+                    tok in text
+                    for tok in [
+                        " le ",
+                        " la ",
+                        " les ",
+                        " des ",
+                        " du ",
+                        " que ",
+                        " est ",
+                    ]
+                ):
+                    return "fr"
+                if any(
+                    tok in text
+                    for tok in [
+                        " il ",
+                        " lo ",
+                        " gli ",
+                        " dei ",
+                        " delle ",
+                        " che ",
+                        " è ",
+                        " di ",
+                    ]
+                ):
+                    return "it"
+                return "de"
+
+            lang_hint = _guess_lang(question)
+            prefix_map = {"de": "Siehe", "fr": "Voir", "it": "Vedi"}
+            prefix = prefix_map.get(lang_hint, "Siehe")
             refs_str = "; ".join(legal_refs_inline[:5])
             if predicted_answer:
-                predicted_answer = f"{predicted_answer} Siehe: {refs_str}."
+                predicted_answer = f"{predicted_answer} {prefix}: {refs_str}."
             else:
-                predicted_answer = f"Siehe: {refs_str}."
+                predicted_answer = f"{prefix}: {refs_str}."
         return dspy.Prediction(
             answer=predicted_answer,
             citations=predicted_citations,
