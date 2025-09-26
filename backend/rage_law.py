@@ -32,22 +32,39 @@ class HTMLToTextParser(HTMLParser):
     def __init__(self) -> None:
         super().__init__()
         self._in_title = False
+        self._in_law_title = False
         self._title_chunks: list[str] = []
+        self._law_title_chunks: list[str] = []
         self._text_chunks: list[str] = []
 
     def handle_starttag(self, tag, attrs):
         if tag.lower() == "title":
             self._in_title = True
+        if tag.lower() == "h1":
+            # look for classes like 'erlasstitel' or 'botschafttitel'
+            klass = None
+            for k, v in attrs:
+                if k.lower() == "class":
+                    klass = v or ""
+                    break
+            if klass:
+                classes = {c.strip() for c in klass.split()}
+                if "erlasstitel" in classes or "botschafttitel" in classes:
+                    self._in_law_title = True
 
     def handle_endtag(self, tag):
         if tag.lower() == "title":
             self._in_title = False
+        if tag.lower() == "h1" and self._in_law_title:
+            self._in_law_title = False
 
     def handle_data(self, data):
         if not data:
             return
         if self._in_title:
             self._title_chunks.append(data)
+        elif self._in_law_title:
+            self._law_title_chunks.append(data)
         else:
             self._text_chunks.append(data)
 
@@ -55,6 +72,11 @@ class HTMLToTextParser(HTMLParser):
         title = " ".join(self._title_chunks).strip()
         title = re.sub(r"\s+", " ", title)
         return title
+
+    def get_law_title(self) -> str:
+        law_title = " ".join(self._law_title_chunks).strip()
+        law_title = re.sub(r"\s+", " ", law_title)
+        return law_title
 
     def get_text(self) -> str:
         text = " ".join(self._text_chunks)
@@ -65,7 +87,8 @@ class HTMLToTextParser(HTMLParser):
 def extract_title_and_text(html_content: str, fallback_title: str) -> tuple[str, str]:
     parser = HTMLToTextParser()
     parser.feed(html_content)
-    title = parser.get_title() or fallback_title
+    # Prefer the law-specific title if present, then <title>, then fallback
+    title = parser.get_law_title() or parser.get_title() or fallback_title
     text = parser.get_text()
     return title, text
 
@@ -80,6 +103,14 @@ def load_fedlex_corpus(
     - corpus_texts: list of strings used for BM25 indexing (title | text)
     """
     html_files = glob.glob(os.path.join(directory_path, "**", "*.html"), recursive=True)
+
+    # Exclude French and Italian folders (e.g., .../fr/... or .../it/...)
+    def _contains_lang_dir(p: str) -> bool:
+        parts = os.path.normpath(p).split(os.sep)
+        return "fr" in parts or "it" in parts
+
+    html_files = [p for p in html_files if not _contains_lang_dir(p)]
+
     if index_limit is not None:
         html_files = html_files[:index_limit]
 
@@ -130,8 +161,8 @@ if len(documents) == 0:
     raise SystemExit(0)
 
 print("Setting up BM25 retriever...")
-stemmer = Stemmer.Stemmer("english")
-corpus_tokens = bm25s.tokenize(corpus, stopwords="en", stemmer=stemmer)
+stemmer = Stemmer.Stemmer("german")
+corpus_tokens = bm25s.tokenize(corpus, stopwords="de", stemmer=stemmer)
 retriever = bm25s.BM25(k1=0.9, b=0.4)
 retriever.index(corpus_tokens)
 
@@ -140,7 +171,7 @@ def search(query: str, k: int) -> list[dict]:
     """Retrieve top-k documents for `query` and return rich hits."""
     if not documents:
         return []
-    tokens = bm25s.tokenize(query, stopwords="en", stemmer=stemmer, show_progress=False)
+    tokens = bm25s.tokenize(query, stopwords="de", stemmer=stemmer, show_progress=False)
     results, scores = retriever.retrieve(tokens, k=k, n_threads=1, show_progress=False)
     hits: list[dict] = []
     for doc_index, score in zip(results[0], scores[0]):
