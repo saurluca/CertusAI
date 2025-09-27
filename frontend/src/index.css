@@ -1,0 +1,598 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    font-family: 'Inter', system-ui, sans-serif;
+  }
+
+  /* Clean slider styling */
+  .swiss-range {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    height: 6px;
+    background: linear-gradient(180deg, #e5e7eb 0%, #d1d5db 100%);
+    border-radius: 9999px;
+    outline: none;
+    transition: box-shadow 0.2s ease;
+  }
+  .swiss-range:focus {
+    box-shadow: 0 0 0 3px rgba(230, 0, 0, 0.15);
+  }
+  /* WebKit */
+  .swiss-range::-webkit-slider-runnable-track {
+    height: 6px;
+    background: linear-gradient(180deg, #e5e7eb 0%, #d1d5db 100%);
+    border-radius: 9999px;
+  }
+  .swiss-range::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    margin-top: -6px; /* centers thumb on 6px track for 18px thumb */
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: white;
+    border: 2px solid #ef4444; /* red-500 */
+    box-shadow: 0 1px 2px rgba(0,0,0,0.15);
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+  }
+  .swiss-range:active::-webkit-slider-thumb {
+    transform: scale(1.05);
+    box-shadow: 0 2px 6px rgba(239, 68, 68, 0.35);
+  }
+  /* Mozilla */
+  .swiss-range::-moz-range-track {
+    height: 6px;
+    background: linear-gradient(180deg, #e5e7eb 0%, #d1d5db 100%);
+    border-radius: 9999px;
+  }
+  .swiss-range::-moz-range-thumb {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: white;
+    border: 2px solid #ef4444;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.15);
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+  }
+  .swiss-range:active::-moz-range-thumb {
+    transform: scale(1.05);
+    box-shadow: 0 2px 6px rgba(239, 68, 68, 0.35);
+  }
+  /* MS Edge Legacy */
+  .swiss-range::-ms-track {
+    height: 6px;
+    background: transparent;
+    border-color: transparent;
+    color: transparent;
+  }
+  .swiss-range::-ms-fill-lower,
+  .swiss-range::-ms-fill-upper {
+    background: linear-gradient(180deg, #e5e7eb 0%, #d1d5db 100%);
+    border-radius: 9999px;
+  }
+  .swiss-range::-ms-thumb {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: white;
+    border: 2px solid #ef4444;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.15);
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+  }
+  
+  body {
+    @apply bg-slate-50 text-slate-900;
+  }
+}
+
+@layer components {
+  .swiss-button {
+    @apply px-4 py-2 bg-swiss-red text-white font-medium rounded-lg hover:bg-swiss-red-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+  
+  .swiss-button-secondary {
+    @apply px-4 py-2 bg-white text-slate-700 font-medium rounded-lg border border-slate-300 hover:bg-slate-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+  
+  .swiss-send-button {
+    @apply bg-gradient-to-r from-swiss-red to-swiss-red-dark border-0 rounded-xl px-7 py-3.5 text-white font-semibold text-base cursor-pointer shadow-swiss-red transition-all duration-300 flex items-center gap-2;
+  }
+  
+  .swiss-send-button:hover {
+    @apply transform -translate-y-0.5 shadow-swiss-red-lg;
+    background: linear-gradient(135deg, #FF1A1A 0%, #E60000 100%);
+  }
+  
+  .swiss-send-button:active {
+    @apply transform translate-y-0;
+    box-shadow: 0 2px 8px rgba(255, 0, 0, 0.3);
+  }
+  
+  .swiss-card {
+    @apply bg-white border border-slate-200 rounded-lg shadow-swiss;
+  }
+  
+  .swiss-input {
+    @apply w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-swiss-red focus:border-swiss-red transition-colors;
+  }
+  
+  .swiss-textarea {
+    @apply w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-swiss-red focus:border-swiss-red transition-colors resize-none;
+  }
+  
+  .swiss-prompt-input {
+    @apply w-full resize-none border-2 border-slate-200 rounded-xl px-5 py-4 text-base font-swiss bg-gradient-to-br from-slate-50 to-white shadow-sm transition-all duration-300 focus:border-swiss-red focus:shadow-swiss-red focus:outline-none;
+    min-height: 120px;
+    max-height: 300px;
+  }
+  
+  .swiss-header {
+    @apply bg-gradient-to-r from-white to-slate-50 border-b-4 border-swiss-red px-6 py-4 shadow-lg;
+  }
+  
+  .swiss-logo {
+    @apply flex items-center gap-3 text-2xl font-bold text-slate-800 no-underline;
+  }
+  
+  .swiss-logo:hover {
+    @apply no-underline;
+  }
+  
+  .swiss-gov-logo {
+    @apply drop-shadow-sm;
+  }
+  
+  .swiss-gov-logo:hover {
+    @apply drop-shadow-md;
+  }
+  
+  /* Legacy Swiss flag icon styles - keeping for backward compatibility */
+  .swiss-flag-icon {
+    @apply w-8 h-8 bg-swiss-red rounded relative;
+  }
+  
+  .swiss-flag-icon::before,
+  .swiss-flag-icon::after {
+    @apply absolute bg-white top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2;
+    content: '';
+  }
+  
+  .swiss-flag-icon::before {
+    @apply w-5 h-1;
+  }
+  
+  .swiss-flag-icon::after {
+    @apply w-1 h-5;
+  }
+
+  /* Flag image styling */
+  .flag-icon {
+    @apply w-6 h-4 object-cover rounded-sm border border-gray-200;
+    background: linear-gradient(45deg, #f0f0f0 25%, transparent 25%), 
+                linear-gradient(-45deg, #f0f0f0 25%, transparent 25%), 
+                linear-gradient(45deg, transparent 75%, #f0f0f0 75%), 
+                linear-gradient(-45deg, transparent 75%, #f0f0f0 75%);
+    background-size: 4px 4px;
+    background-position: 0 0, 0 2px, 2px -2px, -2px 0px;
+  }
+
+  .flag-icon:hover {
+    @apply border-gray-300;
+  }
+
+  .flag-icon[src*="flagcdn.com"]:not([src=""]) {
+    background: none;
+  }
+  
+  .swiss-footer {
+    @apply bg-gradient-to-r from-slate-100 to-slate-200 border-t-2 border-swiss-red px-6 py-5 text-center text-sm text-slate-600;
+  }
+  
+  .swiss-footer-brand {
+    @apply flex items-center justify-center gap-2 font-semibold text-slate-700 mb-2;
+  }
+  
+  .switzerland-map-icon {
+    @apply w-5 h-5 inline-flex items-center justify-center align-middle;
+    background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" fill="%23FF0000"/></svg>');
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: contain;
+  }
+  
+  .swiss-badge {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
+  }
+  
+  .swiss-badge-red {
+    @apply bg-red-100 text-red-800;
+  }
+  
+  .swiss-badge-blue {
+    @apply bg-blue-100 text-blue-800;
+  }
+  
+  .swiss-badge-green {
+    @apply bg-green-100 text-green-800;
+  }
+  
+  .swiss-badge-gray {
+    @apply bg-gray-100 text-gray-800;
+  }
+  
+  /* Responsive utilities */
+  .line-clamp-1 {
+    @apply overflow-hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 1;
+    -webkit-box-orient: vertical;
+  }
+  
+  .line-clamp-2 {
+    @apply overflow-hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+  }
+  
+  .line-clamp-3 {
+    @apply overflow-hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+  }
+  
+  /* Animation utilities */
+  .animate-fade-in {
+    animation: fadeIn 0.3s ease-in-out;
+  }
+  
+  .animate-shake {
+    animation: shake 0.5s ease-in-out;
+  }
+  
+  .animate-slide-up {
+    animation: slideUp 0.4s ease-out 0.2s both;
+  }
+  
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  
+  @keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    10%, 30%, 50%, 70%, 90% { transform: translateX(-4px); }
+    20%, 40%, 60%, 80% { transform: translateX(4px); }
+  }
+  
+  @keyframes slideUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  
+  /* Swiss-specific patterns */
+  .swiss-pattern {
+    background-image: radial-gradient(circle at 1px 1px, rgba(255,0,0,0.1) 1px, transparent 0);
+    background-size: 20px 20px;
+  }
+  
+  /* Swiss micro-interactions */
+  .swiss-hover-lift {
+    @apply transition-all duration-300 ease-out;
+  }
+  
+  .swiss-hover-lift:hover {
+    @apply transform -translate-y-1 shadow-lg;
+  }
+  
+  .swiss-hover-glow {
+    @apply transition-all duration-300 ease-out;
+  }
+  
+  .swiss-hover-glow:hover {
+    @apply shadow-swiss-red-lg;
+    box-shadow: 0 0 20px rgba(255, 0, 0, 0.3);
+  }
+  
+  .swiss-hover-scale {
+    @apply transition-transform duration-300 ease-out;
+  }
+  
+  .swiss-hover-scale:hover {
+    @apply transform scale-105;
+  }
+  
+  .swiss-ripple {
+    position: relative;
+    overflow: hidden;
+  }
+  
+  .swiss-ripple::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 0;
+    height: 0;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.3);
+    transform: translate(-50%, -50%);
+    transition: width 0.6s, height 0.6s;
+  }
+  
+  .swiss-ripple:active::before {
+    width: 300px;
+    height: 300px;
+  }
+  
+  /* Swiss scrollbar */
+  .swiss-scrollbar::-webkit-scrollbar {
+    width: 8px;
+  }
+  
+  .swiss-scrollbar::-webkit-scrollbar-track {
+    background: #f1f5f9;
+    border-radius: 4px;
+  }
+  
+  .swiss-scrollbar::-webkit-scrollbar-thumb {
+    background: linear-gradient(to bottom, #FF0000, #CC0000);
+    border-radius: 4px;
+  }
+  
+  .swiss-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(to bottom, #FF1A1A, #E60000);
+  }
+
+  /* Clean 3D square styling - similar to reference image */
+  .swiss-3d-square {
+    background: linear-gradient(135deg, #DC2626 0%, #B91C1C 50%, #991B1B 100%);
+    border: 1px solid rgba(0, 0, 0, 0.4);
+    border-radius: 1px;
+    box-shadow: 
+      /* Clean 3D shadow */
+      0 2px 4px rgba(0, 0, 0, 0.3),
+      0 1px 2px rgba(0, 0, 0, 0.2),
+      /* Subtle inset highlights */
+      inset 0 1px 0 rgba(255, 255, 255, 0.08),
+      inset 0 -1px 0 rgba(0, 0, 0, 0.2),
+      /* Side depth */
+      inset 1px 0 0 rgba(255, 255, 255, 0.03),
+      inset -1px 0 0 rgba(0, 0, 0, 0.15);
+  }
+
+  .swiss-3d-square::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(45deg, 
+      rgba(255, 255, 255, 0.05) 0%, 
+      transparent 40%, 
+      transparent 60%, 
+      rgba(0, 0, 0, 0.05) 100%);
+    border-radius: 1px;
+    pointer-events: none;
+  }
+
+  /* Enhanced grid container with gap shadows */
+  .swiss-grid-container {
+    background: 
+      /* Dark gap shadows between squares */
+      linear-gradient(to right, transparent 0%, rgba(0, 0, 0, 0.6) 1%, transparent 2%),
+      linear-gradient(to bottom, transparent 0%, rgba(0, 0, 0, 0.6) 1%, transparent 2%),
+      /* Base dark background */
+      radial-gradient(circle at center, rgba(0, 0, 0, 0.3) 0%, rgba(0, 0, 0, 0.8) 100%);
+    background-size: 12.5% 12.5%, 12.5% 12.5%, 100% 100%;
+    background-position: 0 0, 0 0, 0 0;
+  }
+
+  /* Subtle hover effects for squares */
+  .swiss-3d-square:hover {
+    transform: translateZ(1px) scale(1.01);
+    box-shadow: 
+      0 3px 6px rgba(0, 0, 0, 0.4),
+      0 1px 3px rgba(0, 0, 0, 0.3),
+      inset 0 1px 0 rgba(255, 255, 255, 0.1),
+      inset 0 -1px 0 rgba(0, 0, 0, 0.25),
+      inset 1px 0 0 rgba(255, 255, 255, 0.05),
+      inset -1px 0 0 rgba(0, 0, 0, 0.2);
+  }
+
+  /* Clean static squares with subtle depth */
+  .swiss-3d-square {
+    /* Removed pulsing animation for cleaner look */
+  }
+
+  /* Enhanced depth for static squares */
+  .swiss-3d-square {
+    transform: translateZ(1px);
+  }
+
+  /* Premium 3D square styling */
+  .premium-3d-square {
+    transition: all 0.3s ease;
+    transform: translateZ(1px);
+  }
+
+  .premium-3d-square:hover {
+    transform: translateZ(2px) scale(1.02);
+    box-shadow: 
+      0 6px 12px rgba(0, 0, 0, 0.5),
+      0 3px 6px rgba(0, 0, 0, 0.4),
+      inset 0 1px 0 rgba(255, 255, 255, 0.15),
+      inset 0 -1px 0 rgba(0, 0, 0, 0.4),
+      inset 1px 0 0 rgba(255, 255, 255, 0.08),
+      inset -1px 0 0 rgba(0, 0, 0, 0.3);
+  }
+
+  /* Subtle pulsing animation for premium feel */
+  .premium-3d-square {
+    animation: premium-pulse 6s ease-in-out infinite;
+  }
+
+  @keyframes premium-pulse {
+    0%, 100% {
+      box-shadow: 
+        0 4px 8px rgba(0, 0, 0, 0.4),
+        0 2px 4px rgba(0, 0, 0, 0.3),
+        inset 0 1px 0 rgba(255, 255, 255, 0.1),
+        inset 0 -1px 0 rgba(0, 0, 0, 0.3),
+        inset 1px 0 0 rgba(255, 255, 255, 0.05),
+        inset -1px 0 0 rgba(0, 0, 0, 0.2);
+    }
+    50% {
+      box-shadow: 
+        0 5px 10px rgba(0, 0, 0, 0.45),
+        0 3px 6px rgba(0, 0, 0, 0.35),
+        inset 0 1px 0 rgba(255, 255, 255, 0.12),
+        inset 0 -1px 0 rgba(0, 0, 0, 0.35),
+        inset 1px 0 0 rgba(255, 255, 255, 0.06),
+        inset -1px 0 0 rgba(0, 0, 0, 0.25);
+    }
+  }
+
+  /* Welcome page animations - removed spinning for cleaner design */
+  
+  .animate-fade-in {
+    animation: fadeIn 0.5s ease-in-out;
+  }
+  
+  @keyframes fadeIn {
+    from { 
+      opacity: 0; 
+      transform: translateY(20px) scale(0.9); 
+    }
+    to { 
+      opacity: 1; 
+      transform: translateY(0) scale(1); 
+    }
+  }
+  
+  .animate-glow {
+    animation: glow 2s ease-in-out infinite alternate;
+  }
+  
+  @keyframes glow {
+    from {
+      text-shadow: 0 0 20px rgba(255, 215, 0, 0.5);
+    }
+    to {
+      text-shadow: 0 0 30px rgba(255, 215, 0, 0.8), 0 0 40px rgba(255, 215, 0, 0.3);
+    }
+  }
+
+  /* Mobile-first responsive design */
+  @media (max-width: 767px) {
+    .swiss-card {
+      @apply p-4;
+    }
+    
+    .swiss-button {
+      @apply w-full justify-center;
+    }
+  }
+
+  /* Swiss plus (+) icon animations */
+  .animate-plus-spin {
+    animation: plus-spin 6s linear infinite;
+  }
+
+  .animate-plus-breathe {
+    animation: plus-breathe 1.8s ease-in-out infinite;
+  }
+
+  .animate-plus-pulse {
+    animation: plus-pulse 1.4s ease-in-out infinite;
+  }
+
+  .animate-plus-orbit {
+    animation: plus-orbit 2.4s linear infinite;
+  }
+
+  @keyframes plus-spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
+
+  @keyframes plus-breathe {
+    0%, 100% { transform: scale(1); filter: drop-shadow(0 0 4px rgba(255,0,0,0.25)); }
+    50% { transform: scale(1.1); filter: drop-shadow(0 0 8px rgba(255,0,0,0.35)); }
+  }
+
+  @keyframes plus-pulse {
+    0%, 100% { opacity: 0.8; transform: scale(0.9); }
+    50% { opacity: 1; transform: scale(1.1); }
+  }
+
+  @keyframes plus-orbit {
+    0% { transform: rotate(0deg) translate(0, 0); }
+    100% { transform: rotate(360deg) translate(0, 0); }
+  }
+}
+
+@layer components {
+  /* Swiss Alps icon animations */
+  .alps-cloud {
+    animation: alps-cloud-drift 6s ease-in-out infinite;
+    opacity: 0.9;
+  }
+  .alps-cloud-loading {
+    animation-duration: 3s;
+  }
+  @keyframes alps-cloud-drift {
+    0% { transform: translateX(0px); opacity: 0.8; }
+    50% { transform: translateX(4px); opacity: 1; }
+    100% { transform: translateX(0px); opacity: 0.85; }
+  }
+
+  .alps-snow {
+    animation: alps-snow-shimmer 2.4s ease-in-out infinite;
+  }
+  .alps-snow-loading {
+    animation-duration: 1.2s;
+  }
+  @keyframes alps-snow-shimmer {
+    0%, 100% { filter: drop-shadow(0 0 0 rgba(255,255,255,0)); }
+    50% { filter: drop-shadow(0 0 4px rgba(255,255,255,0.6)); }
+  }
+
+  .alps-mountain-pulse {
+    animation: alps-mountain-pulse-kf 2.2s ease-in-out infinite;
+  }
+  @keyframes alps-mountain-pulse-kf {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.04); }
+  }
+}
+
+@layer components {
+  /* Scales of Justice animations */
+  .scales-swing {
+    animation: scales-swing-kf 3.6s ease-in-out infinite;
+  }
+  .scales-swing-fast {
+    animation: scales-swing-kf 1.6s ease-in-out infinite;
+  }
+  @keyframes scales-swing-kf {
+    0% { transform: rotate(0deg); }
+    25% { transform: rotate(4deg); }
+    50% { transform: rotate(0deg); }
+    75% { transform: rotate(-4deg); }
+    100% { transform: rotate(0deg); }
+  }
+
+  .scales-pan { transform-origin: center; }
+  .scales-pan-pulse { animation: scales-pan-pulse-kf 1.8s ease-in-out infinite; }
+  @keyframes scales-pan-pulse-kf {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(0.6px); }
+  }
+}
