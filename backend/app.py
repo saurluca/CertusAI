@@ -86,7 +86,7 @@ def ask(
     return result
 
 
-@app.post("/v1/chat/completions")
+@app.post("/v1/chat/completions/openapi.json")
 def chat_completions(payload: dict = Body(...)):
     """OpenAI-compatible Chat Completions endpoint for Open WebUI.
 
@@ -95,7 +95,9 @@ def chat_completions(payload: dict = Body(...)):
     Optional extras supported: "retrieval", "num_docs", "lang", "include_citations" (bool)
     """
     model = payload.get("model") or os.environ.get("RAG_MODEL", "swiss-law-rag")
-    retrieval = (payload.get("retrieval") or os.environ.get("RETRIEVAL", "bm25")).lower()
+    retrieval = (
+        payload.get("retrieval") or os.environ.get("RETRIEVAL", "bm25")
+    ).lower()
     num_docs = payload.get("num_docs")
     lang = payload.get("lang") or "de"
     include_citations = payload.get("include_citations", True)
