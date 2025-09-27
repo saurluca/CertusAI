@@ -2,6 +2,7 @@ import os
 import time
 import uuid
 from fastapi import FastAPI, Body
+from fastapi.middleware.cors import CORSMiddleware
 from typing import Optional
 
 from rag import LawRAGService
@@ -11,6 +12,14 @@ app = FastAPI(title="Swiss Law RAG API", version="0.1.0")
 
 
 _service: Optional[LawRAGService] = None
+
+# Allow all CORS for development/OpenWebUI proxying
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 def get_service(
