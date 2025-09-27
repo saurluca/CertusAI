@@ -49,7 +49,7 @@ class LawRAGService:
                 normalized.append(lc)
         self._answer_languages = normalized or ["de"]
 
-        lm = build_lm(model_name)
+        lm = build_lm(model_name, 4096)
         dspy.configure(lm=lm)
 
         # Load corpus

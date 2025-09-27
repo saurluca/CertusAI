@@ -7,7 +7,8 @@ load_dotenv()
 
 print("running mini-dspy")
 
-lm = build_lm("llama3.2:3b")
+# llama3.2:3b
+lm = build_lm("apertus-70b-com")
 
 dspy.configure(lm=lm)
 

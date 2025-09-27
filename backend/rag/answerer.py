@@ -18,6 +18,8 @@ class AnswerWithCitations(dspy.Module):
         Write your answer based on the retrieved results of your query.
         The answer should be concise and to the point, make it a single paragraph.
         The answer should be in the same language the user asked.
+        
+        BE CONSCIE AND TO THE POINT
 
         Parameters
         - num_docs: number of docs to retrieve per query
