@@ -57,18 +57,8 @@ const SwissMainLayout: React.FC = () => {
         // Handle file upload
         response = await apiService.uploadDocument(file);
       } else {
-        // Swiss Law RAG Search on Home Page using selected controls
-        try {
-          response = await apiService.searchSwissLaw(content, ragLanguage, numDocs, retrieval);
-        } catch (swissError) {
-          console.log('Swiss Law RAG search failed, falling back to Swiss Law analysis:', swissError);
-          try {
-            response = await apiService.analyzeSwissLaw(content, ragLanguage);
-          } catch (analysisError) {
-            console.log('Swiss Law analysis failed, falling back to generic analysis:', analysisError);
-            response = await apiService.analyzeText(content, ragLanguage);
-          }
-        }
+        // Minimal call to backend /ask endpoint
+        response = await apiService.askSwissLaw(content, ragLanguage, numDocs, retrieval);
       }
 
       // Create AI response with real data

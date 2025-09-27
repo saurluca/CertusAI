@@ -9,6 +9,7 @@ import {
 } from '../types';
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/api/v1';
+const RAG_BASE_URL = process.env.REACT_APP_RAG_BASE_URL || 'http://localhost:8000';
 
 class ApiService {
   private async request<T>(
@@ -91,6 +92,27 @@ class ApiService {
         enable_citations: true
       }),
     });
+  }
+
+  // Minimal Swiss Law /ask bridge to FastAPI backend
+  async askSwissLaw(
+    question: string,
+    lang: 'de' | 'fr' | 'it' | 'all' = 'de',
+    numDocs: number = 10,
+    retrieval: 'bm25' | 'semantic' | 'hybrid' = 'bm25'
+  ): Promise<any> {
+    const params = new URLSearchParams({
+      question,
+      lang,
+      num_docs: String(numDocs),
+      retrieval,
+    });
+    const url = `${RAG_BASE_URL}/ask?${params.toString()}`;
+    const response = await fetch(url, { method: 'POST' });
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    return response.json();
   }
 
   // Swiss Law RAG Search
