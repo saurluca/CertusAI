@@ -1,5 +1,7 @@
 import os
-from fastapi import FastAPI
+import time
+import uuid
+from fastapi import FastAPI, Body
 from typing import Optional
 
 from rag import LawRAGService
@@ -57,20 +59,105 @@ def ask(
     lang: Optional[str] = "de",  # "de", "fr", "it", or "all"
 ):
     service = get_service(num_docs=num_docs, retrieval=retrieval)
-    # Update answer languages dynamically per request
-    if retrieval == "bm25":
-        if lang == "all":
-            service._answer_languages = ["de", "fr", "it"]
-        elif lang in ("de", "fr", "it"):
-            service._answer_languages = [lang]
-        else:
-            service._answer_languages = ["de"]
-        # Rebuild only the answerer to apply language selection
-        service.answerer = service.answerer.__class__(
-            num_docs=service._num_docs,
-            search_fn=lambda q, k, lang_code=None: service._search(q, k, lang_code),
-            documents=service.documents,
-            search_languages=service._answer_languages,
-        )
+    # Update answer languages dynamically per request (applies to all retrieval modes)
+    if lang == "all":
+        service._answer_languages = ["de", "fr", "it"]
+    elif lang in ("de", "fr", "it"):
+        service._answer_languages = [lang]
+    else:
+        service._answer_languages = ["de"]
+    # Rebuild only the answerer to apply language selection
+    service.answerer = service.answerer.__class__(
+        num_docs=service._num_docs,
+        search_fn=lambda q, k, lang_code=None: service._search(q, k, lang_code),
+        documents=service.documents,
+        search_languages=service._answer_languages,
+    )
     result = service.ask(question)
     return result
+
+
+@app.post("/v1/chat/completions")
+def chat_completions(payload: dict = Body(...)):
+    """OpenAI-compatible Chat Completions endpoint for Open WebUI.
+
+    Expects a JSON body like:
+    { "model": "swiss-law-rag", "messages": [{"role":"user","content":"..."}], "stream": false }
+    Optional extras supported: "retrieval", "num_docs", "lang", "include_citations" (bool)
+    """
+    model = payload.get("model") or os.environ.get("RAG_MODEL", "swiss-law-rag")
+    retrieval = (payload.get("retrieval") or os.environ.get("RETRIEVAL", "bm25")).lower()
+    num_docs = payload.get("num_docs")
+    lang = payload.get("lang") or "de"
+    include_citations = payload.get("include_citations", True)
+
+    # Extract last user message as the question
+    messages = payload.get("messages") or []
+    question = ""
+    for msg in reversed(messages):
+        if isinstance(msg, dict) and msg.get("role") == "user":
+            content = msg.get("content")
+            if isinstance(content, list):
+                parts = []
+                for part in content:
+                    if isinstance(part, dict):
+                        text = part.get("text")
+                        if text:
+                            parts.append(text)
+                    elif isinstance(part, str):
+                        parts.append(part)
+                question = "\n".join(parts)
+            elif isinstance(content, str):
+                question = content
+            break
+    if not question:
+        question = payload.get("prompt") or ""
+
+    service = get_service(num_docs=num_docs, retrieval=retrieval)
+
+    # Apply language selection similar to /ask
+    if lang == "all":
+        service._answer_languages = ["de", "fr", "it"]
+    elif lang in ("de", "fr", "it"):
+        service._answer_languages = [lang]
+    else:
+        service._answer_languages = ["de"]
+
+    # Rebuild answerer to apply updated languages
+    service.answerer = service.answerer.__class__(
+        num_docs=service._num_docs,
+        search_fn=lambda q, k, lang_code=None: service._search(q, k, lang_code),
+        documents=service.documents,
+        search_languages=service._answer_languages,
+    )
+
+    rag_result = service.ask(question)
+
+    content = rag_result.get("answer", "")
+    if include_citations:
+        citations = rag_result.get("citations") or []
+        if citations:
+            lines = []
+            for c in citations[:5]:
+                title = c.get("title") or c.get("doc_title") or ""
+                ref = c.get("article_ref") or ""
+                lines.append(f"- {title} {ref}".strip())
+            if lines:
+                content = f"{content}\n\nSources:\n" + "\n".join(lines)
+
+    response = {
+        "id": f"chatcmpl-{uuid.uuid4().hex}",
+        "object": "chat.completion",
+        "created": int(time.time()),
+        "model": model,
+        "choices": [
+            {
+                "index": 0,
+                "message": {"role": "assistant", "content": content},
+                "finish_reason": "stop",
+            }
+        ],
+        # Token accounting is backend-specific; return zeros for now
+        "usage": {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0},
+    }
+    return response
