@@ -70,7 +70,7 @@ class LawRAGService:
                 default_k=self._num_docs,
             )
 
-            def _search(q: str, k: int) -> List[Dict]:
+            def _search(q: str, k: int, lang: Optional[str] = None) -> List[Dict]:
                 return semantic_search(
                     q,
                     k,
@@ -79,6 +79,7 @@ class LawRAGService:
                     documents=self.documents,
                     corpus_texts=self.corpus,
                     document_context_length=self._document_context_length,
+                    lang=lang,
                 )
 
         else:

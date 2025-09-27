@@ -42,6 +42,7 @@ def search(
     documents: List[Dict],
     corpus_texts: List[str],
     document_context_length: int = 10000,
+    lang: Any = None,
 ) -> List[Dict]:
     """Run a semantic search over `corpus_texts` and map back to document metadata.
 
@@ -122,6 +123,7 @@ def search(
             article_ref = None
             law_marker = doc.get("law_marker")
         source_kind = doc.get("source_kind", "unknown")
+        doc_lang = doc.get("lang", "de")
 
         hits.append(
             {
@@ -136,8 +138,17 @@ def search(
                 "score": float(score),
                 "article_ref": article_ref,
                 "source_kind": source_kind,
+                "lang": doc_lang,
             }
         )
+
+    # Optional language filter
+    try:
+        lang_code = str(lang).lower().strip() if lang is not None else None
+    except Exception:
+        lang_code = None
+    if lang_code in ("de", "fr", "it"):
+        hits = [h for h in hits if h.get("lang") == lang_code]
 
     # Respect k limit and return
     return hits[:k]

@@ -3,6 +3,35 @@ from typing import List, Dict, Callable, Any, Optional
 import dspy
 
 
+class SearchQuery(dspy.Signature):
+    """Generate search queries in German and the language of the question for BM25. 
+    It should be atleast 10 words."""
+    
+    question: str = dspy.InputField()
+    search_query_de: str = dspy.OutputField()
+    search_query_fr: str = dspy.OutputField()
+    search_query_it: str = dspy.OutputField()
+    
+    
+class AnswerSignature(dspy.Signature):
+    """
+    You are a swiss law expert.
+    Answer the question based on the retrieved results of your query.
+    The answer should be concise and to the point, no more then 42 words.
+    The answer should be in the same language the user asked.
+    The Answer should be concisce and to the point.
+    
+    Be convservative with you confidence rating, if no relevant document found, reduce confidence.
+    """
+    question: str = dspy.InputField()
+    contexts: str = dspy.InputField()
+    citations: List[str] = dspy.OutputField()
+    confidence: float = dspy.OutputField()
+    answer: str = dspy.OutputField()
+    article_quotes: List[str] = dspy.OutputField()
+    article_refs: List[str] = dspy.OutputField()
+
+
 class AnswerWithCitations(dspy.Module):
     def __init__(
         self,
@@ -14,12 +43,11 @@ class AnswerWithCitations(dspy.Module):
     ):
         """Answer questions for Swiss law with citations.
         Generate search queries in German, French, and Italian for BM25,
-        the query should be atleast 10 words.
         Write your answer based on the retrieved results of your query.
         The answer should be concise and to the point, make it a single paragraph.
         The answer should be in the same language the user asked.
         
-        BE CONSCIE AND TO THE POINT
+        be concise and to the point in your answer.
 
         Parameters
         - num_docs: number of docs to retrieve per query
@@ -44,29 +72,26 @@ class AnswerWithCitations(dspy.Module):
 
         self.compose_context = _compose
         # Produce multilingual search queries
-        self.generate_queries = dspy.ChainOfThought(
-            "question -> search_query_de, search_query_fr, search_query_it"
-        )
-        self.answer = dspy.ChainOfThought(
-            (
-                "question, contexts -> answer, citations: list[str], confidence: float, "
-                "article_refs: list[str], article_quotes: list[str]"
-            )
-        )
+        self.generate_queries = dspy.ChainOfThought(SearchQuery)
+        self.answer = dspy.ChainOfThought(AnswerSignature)
+
         self.validate = dspy.ChainOfThought(
             ("question, answer, contexts, citations -> ok: bool, feedback")
         )
 
     def forward(self, question: str):
+        print("Generating queries...")
         query_pred = self.generate_queries(question=question)
         q_de = getattr(query_pred, "search_query_de", None) or question
         q_fr = getattr(query_pred, "search_query_fr", None) or question
         q_it = getattr(query_pred, "search_query_it", None) or question
 
         # Choose which languages to query based on configuration
+        print("Choosing languages to query...")
         active_langs = self._search_languages or ["de"]
         lang_to_query = {"de": q_de, "fr": q_fr, "it": q_it}
         per_lang_hits: List[List[Dict[str, Any]]] = []
+        print("Searching...")
         for lcode in ("de", "fr", "it"):
             if lcode not in active_langs:
                 continue
@@ -77,6 +102,7 @@ class AnswerWithCitations(dspy.Module):
                 hits_l = self._search_fn(q, self.num_docs)
             per_lang_hits.append(hits_l or [])
 
+        print("Deduplicating...")
         all_hits: List[Dict[str, Any]] = [h for group in per_lang_hits for h in group]
 
         # Deduplicate by (doc_id, article_ref) keeping highest score
@@ -95,11 +121,18 @@ class AnswerWithCitations(dspy.Module):
             kind = hit.get("source_kind")
             return base * 1.25 if kind == "official" else base
 
+        print("Sorting...")
         deduped_hits.sort(key=boosted, reverse=True)
         hits = deduped_hits[: self.num_docs]
-        # Track the combined search query for transparency
-        search_query = f"de: {q_de} | fr: {q_fr} | it: {q_it}"
+        # Track only the active language queries for transparency
+        lang_to_query = {"de": q_de, "fr": q_fr, "it": q_it}
+        search_query_parts = []
+        for lcode in ("de", "fr", "it"):
+            if lcode in active_langs:
+                search_query_parts.append(f"{lcode}: {lang_to_query.get(lcode, question)}")
+        search_query = " | ".join(search_query_parts)
         contexts = self.compose_context(hits)
+        print("Answering...")
         pred = self.answer(question=question, contexts=contexts)
 
         predicted_answer = getattr(pred, "answer", "")
