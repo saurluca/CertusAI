@@ -243,11 +243,3 @@ The application is designed for deployment on Swiss-hosted infrastructure:
 - CDN integration for optimal performance
 - Environment-specific configuration
 
-## 📞 Support
-
-For technical support and questions about the CertusAI frontend, please contact the development team.
-
----
-
-**CertusAI** - Swiss Legal Analysis System
-© 2024 Swiss Federal Government
