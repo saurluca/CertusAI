@@ -71,9 +71,17 @@ npm start
 ```md
 CertusAI/
 ├── backend/          # Python FastAPI + DSPy + Apertus
+├──── data/          # Data directory
 ├── frontend/         # React + TypeScript + Swiss Design
 └── README.md         # This file
 ```
+
+## Data
+
+The data used can be found at:
+
+- https://github.com/droid-f/fedlex
+- https://github.com/droid-f/fedlex-assets
 
 ## 🌐 Multilingual Support
 
