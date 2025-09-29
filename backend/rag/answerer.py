@@ -4,15 +4,15 @@ import dspy
 
 
 class SearchQuery(dspy.Signature):
-    """Generate search queries in German and the language of the question for BM25. 
+    """Generate search queries in German and the language of the question for BM25.
     It should be atleast 10 words."""
-    
+
     question: str = dspy.InputField()
     search_query_de: str = dspy.OutputField()
     search_query_fr: str = dspy.OutputField()
     search_query_it: str = dspy.OutputField()
-    
-    
+
+
 class AnswerSignature(dspy.Signature):
     """
     You are a swiss law expert.
@@ -20,9 +20,10 @@ class AnswerSignature(dspy.Signature):
     The answer should be concise and to the point, no more then 42 words.
     The answer should be in the same language the user asked.
     The Answer should be concisce and to the point.
-    
+
     Be convservative with you confidence rating, if no relevant document found, reduce confidence.
     """
+
     question: str = dspy.InputField()
     contexts: str = dspy.InputField()
     citations: List[str] = dspy.OutputField()
@@ -46,7 +47,7 @@ class AnswerWithCitations(dspy.Module):
         Write your answer based on the retrieved results of your query.
         The answer should be concise and to the point, make it a single paragraph.
         The answer should be in the same language the user asked.
-        
+
         be concise and to the point in your answer.
 
         Parameters
@@ -129,7 +130,9 @@ class AnswerWithCitations(dspy.Module):
         search_query_parts = []
         for lcode in ("de", "fr", "it"):
             if lcode in active_langs:
-                search_query_parts.append(f"{lcode}: {lang_to_query.get(lcode, question)}")
+                search_query_parts.append(
+                    f"{lcode}: {lang_to_query.get(lcode, question)}"
+                )
         search_query = " | ".join(search_query_parts)
         contexts = self.compose_context(hits)
         print("Answering...")

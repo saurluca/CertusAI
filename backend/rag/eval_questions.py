@@ -2,7 +2,7 @@ import os
 import sys
 import csv
 import argparse
-from typing import List, Dict, Optional
+from typing import List, Dict
 
 import dspy
 from dspy import Example
