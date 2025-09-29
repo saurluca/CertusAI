@@ -3,7 +3,7 @@
 > **Award-winning AI platform simplifying access to Swiss law**  
 > 🏆 Winner of "Best Usage of Apertus" at Swiss AI Weeks Hackathon 2025 (CHF 10,000)
 
-## 🎯 What is CertusAI?
+## What is CertusAI?
 
 CertusAI is an intelligent legal assistant that makes Swiss bureaucracy and law accessible to everyone. Built during the Swiss AI Weeks Hackathon, it addresses the complexity of understanding Swiss legal documents, permits, and regulations.
 
@@ -15,7 +15,7 @@ CertusAI is an intelligent legal assistant that makes Swiss bureaucracy and law 
 **Challenge**: Swiss Government Digital Services  
 **Award**: "Best Usage of Apertus" (CHF 10,000)
 
-## 🌟 Key Features
+## Key Features
 
 - **🤖 AI-Powered Legal Assistant**: Query Swiss legal documents using advanced AI
 - **🌍 Multilingual Support**: Answers in all Swiss national languages (German, French, Italian) plus English
