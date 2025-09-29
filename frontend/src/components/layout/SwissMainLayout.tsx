@@ -88,11 +88,11 @@ const SwissMainLayout: React.FC = () => {
 
       // Add Swiss Law specific information if available
       if (response.citations && response.citations.length > 0) {
-        aiMessage.content += `\n\n📚 **Rechtsquellen:**\n${response.citations.map((citation: string, index: number) => `${index + 1}. ${citation}`).join('\n')}`;
+        aiMessage.content += `\n\nSources:\n${response.citations.map((citation: string, index: number) => `${index + 1}. ${citation}`).join('\n')}`;
       }
       
       if (response.confidence) {
-        aiMessage.content += `\n\n🎯 **Vertrauensgrad:** ${Math.round(response.confidence * 100)}%`;
+        aiMessage.content += `\n\nConfidence: ${Math.round(response.confidence * 100)}%`;
       }
 
       setMessages(prev => [...prev, aiMessage]);
