@@ -9,6 +9,9 @@ CertusAI is an intelligent legal assistant that makes Swiss bureaucracy and law 
 
 **"Certus"** means "certainty" in Latin - because when it comes to law, certainty is paramount. Our platform provides answers directly sourced from official legal documents and court cases.
 
+<img width="1920" height="1085" alt="preview" src="https://github.com/user-attachments/assets/0362e70b-f48a-424e-a2f7-3efa6b6b4555" />
+
+
 ## 🏆 Hackathon Achievement
 
 **Swiss AI Weeks 2025** - Zurich Hackathon  
